@@ -84,6 +84,8 @@ void ButtonLayoutScreen::init() {
     showMacroMode = Storage::getInstance().getDisplayOptions().macroMode;
     showProfileMode = Storage::getInstance().getDisplayOptions().profileMode;
 
+    recomputeEncoderScale();
+
     getRenderer()->clearScreen();
 }
 
@@ -616,8 +618,29 @@ void ButtonLayoutScreen::handleEncoder(GPEvent* e) {
         // covers more than half the dial. The values are unwrapped here and
         // only wrapped to 0-360 when handed to the widget for drawing.
         uint8_t mag = ev->magnitude > 0 ? ev->magnitude : 1;
-        float step = ev->direction * (360.0f / 24.0f) * (float)mag;
+        float step = ev->direction * _encoderDegreesPerStep[idx] * (float)mag;
         _encoderTargetAngle[idx] += step;
+    }
+}
+
+void ButtonLayoutScreen::recomputeEncoderScale() {
+    // One logical step covers (countsPerDetent / (pulsesPerRevolution * 4)) of a
+    // full physical revolution, so the dial's degrees-per-step is
+    //   (360 * countsPerDetent / (pulsesPerRevolution * 4)) * multiplier.
+    // The multiplier mirrors the analog-stick-mode amplification the addon
+    // already applies, so the dial visually tracks the same sensitivity the
+    // user feels at the gamepad output.
+    const RotaryOptions& opts = Storage::getInstance().getAddonOptions().rotaryOptions;
+    const RotaryPinOptions* enc[2] = { &opts.encoderOne, &opts.encoderTwo };
+    for (uint8_t idx = 0; idx < 2; idx++) {
+        uint32_t ppr = enc[idx]->pulsesPerRevolution > 0 ? enc[idx]->pulsesPerRevolution : 24;
+        uint32_t cpd = enc[idx]->countsPerDetent;
+        if (cpd != 1 && cpd != 2 && cpd != 4) cpd = 4;
+        float mult = enc[idx]->multiplier;
+        if (!std::isfinite(mult) || mult <= 0.0f) mult = 1.0f;
+        float stepsPerRev = (float)(ppr * 4) / (float)cpd;
+        if (stepsPerRev < 1.0f) stepsPerRev = 1.0f;
+        _encoderDegreesPerStep[idx] = (360.0f / stepsPerRev) * mult;
     }
 }
 
