@@ -179,8 +179,14 @@ class ButtonLayoutScreen : public GPScreen {
 
         float _encoderAngle[2] = {0.0f, 0.0f};        // displayed (smoothed) angle
         float _encoderTargetAngle[2] = {0.0f, 0.0f};  // target angle accumulated from encoder events
+        // Degrees the dial should sweep per logical encoder step. Derived from the
+        // configured pulsesPerRevolution, countsPerDetent (quadrature divisor), and
+        // multiplier so the dial reflects how the user has tuned the encoder rather
+        // than a hard-coded 24-step assumption.
+        float _encoderDegreesPerStep[2] = {15.0f, 15.0f};
         std::vector<GPRotaryEncoder*> _rotaryElements;
         void updateRotaryAnimation();
+        void recomputeEncoderScale();
 
         bool hasTurboAssigned = false;
 
