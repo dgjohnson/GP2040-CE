@@ -624,23 +624,23 @@ void ButtonLayoutScreen::handleEncoder(GPEvent* e) {
 }
 
 void ButtonLayoutScreen::recomputeEncoderScale() {
-    // One logical step covers (countsPerDetent / (pulsesPerRevolution * 4)) of a
-    // full physical revolution, so the dial's degrees-per-step is
-    //   (360 * countsPerDetent / (pulsesPerRevolution * 4)) * multiplier.
-    // The multiplier mirrors the analog-stick-mode amplification the addon
-    // already applies, so the dial visually tracks the same sensitivity the
-    // user feels at the gamepad output.
+    // The dial mirrors physical encoder rotation, so its degrees-per-step
+    // is determined entirely by the encoder's resolution configuration:
+    //   stepsPerRev    = (pulsesPerRevolution * 4) / countsPerDetent
+    //   degreesPerStep = 360 / stepsPerRev
+    // The user-configurable `multiplier` is intentionally NOT applied here -
+    // that setting amplifies analog-stick output mapping in the addon but
+    // does not change how far the encoder physically turned, so applying it
+    // here would make the dial drift away from real rotation.
     const RotaryOptions& opts = Storage::getInstance().getAddonOptions().rotaryOptions;
     const RotaryPinOptions* enc[2] = { &opts.encoderOne, &opts.encoderTwo };
     for (uint8_t idx = 0; idx < 2; idx++) {
         uint32_t ppr = enc[idx]->pulsesPerRevolution > 0 ? enc[idx]->pulsesPerRevolution : 24;
         uint32_t cpd = enc[idx]->countsPerDetent;
         if (cpd != 1 && cpd != 2 && cpd != 4) cpd = 4;
-        float mult = enc[idx]->multiplier;
-        if (!std::isfinite(mult) || mult <= 0.0f) mult = 1.0f;
         float stepsPerRev = (float)(ppr * 4) / (float)cpd;
         if (stepsPerRev < 1.0f) stepsPerRev = 1.0f;
-        _encoderDegreesPerStep[idx] = (360.0f / stepsPerRev) * mult;
+        _encoderDegreesPerStep[idx] = 360.0f / stepsPerRev;
     }
 }
 
