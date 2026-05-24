@@ -33,7 +33,17 @@ void GPSlider::draw() {
                      : leftAnalog  ? getProcessedGamepad()->state.ly
                      : GAMEPAD_JOYSTICK_MID;
 
-    uint16_t dotY = top + (uint16_t)((double)h * analogY / (double)GAMEPAD_JOYSTICK_MAX);
+    // The plunger calibrates its resting position to the joystick midpoint,
+    // and from there only travels in one direction. Map rest to the TOP of the
+    // track and full deflection (toward MAX) to the bottom. Any movement past
+    // rest in the opposite direction is clamped so the dot never rises above
+    // the top of the line.
+    int32_t halfRange = (int32_t)GAMEPAD_JOYSTICK_MAX - (int32_t)GAMEPAD_JOYSTICK_MID;
+    if (halfRange < 1) halfRange = 1;
+    int32_t delta = (int32_t)analogY - (int32_t)GAMEPAD_JOYSTICK_MID;
+    if (delta < 0) delta = 0;
+
+    uint16_t dotY = top + (uint16_t)((double)h * (double)delta / (double)halfRange);
     dotY = (uint16_t)std::max((int)top, std::min((int)bot, (int)dotY));
 
     getRenderer()->drawEllipse(tx, dotY, 2, 2, this->strokeColor, this->strokeColor);
