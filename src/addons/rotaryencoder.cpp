@@ -62,6 +62,13 @@ static inline bool isAnalogStickMode(RotaryEncoderPinMode m) {
         || m == ENCODER_MODE_RIGHT_ANALOG_X || m == ENCODER_MODE_RIGHT_ANALOG_Y;
 }
 
+// Velocity (rate) modes: the axis reflects spin SPEED (centered at rest), not
+// accumulated position. Kept separate from isAnalogStickMode() because they do
+// NOT use position-based span / auto-center -- they self-center when spinning stops.
+static inline bool isAnalogVelocityMode(RotaryEncoderPinMode m) {
+    return m == ENCODER_MODE_RIGHT_ANALOG_X_VELOCITY || m == ENCODER_MODE_RIGHT_ANALOG_Y_VELOCITY;
+}
+
 static inline bool isAnalogTriggerMode(RotaryEncoderPinMode m) {
     return m == ENCODER_MODE_LEFT_TRIGGER || m == ENCODER_MODE_RIGHT_TRIGGER;
 }
@@ -73,6 +80,12 @@ static constexpr float    MIN_MULTIPLIER     = 0.01f;
 static constexpr float    MAX_MULTIPLIER     = 100.0f;
 static constexpr uint32_t MAX_PULSE_HOLD_MS  = 10000;   // 10 s
 static constexpr uint32_t MAX_RESET_AFTER_MS = 60000;   // 60 s
+
+// Velocity-mode smoothing window. Steps are accumulated over this window and the
+// resulting steps/second is published as the axis value. Small enough to stay
+// responsive (~125 Hz updates), large enough to smooth per-loop quadrature jitter
+// before a 60 Hz host samples the axis. Self-centers: a window with 0 steps -> 0.
+static constexpr uint32_t VEL_WINDOW_MS      = 8;
 
 void RotaryEncoderInput::setup()
 {
@@ -169,12 +182,16 @@ void RotaryEncoderInput::setup()
             // Clamp pulseHoldMs so `now + pulseHoldMs` cannot wrap into the past.
             dst.pulseHoldMs = src.pulseHoldMs > MAX_PULSE_HOLD_MS ? MAX_PULSE_HOLD_MS : src.pulseHoldMs;
 
+            // Velocity full scale (steps/sec at full deflection). Guard against an
+            // unset/zero value collapsing the velocity mapping divisor.
+            dst.velocityFullScale = src.velocityFullScale > 0 ? (int32_t)src.velocityFullScale : 200;
+
             // Default output ranges by mode.
             if (isAnalogTriggerMode(dst.mode)) {
                 gamepad->hasAnalogTriggers = true;
                 dst.minRange = GAMEPAD_TRIGGER_MIN;
                 dst.maxRange = GAMEPAD_TRIGGER_MAX;
-            } else if (isAnalogStickMode(dst.mode)) {
+            } else if (isAnalogStickMode(dst.mode) || isAnalogVelocityMode(dst.mode)) {
                 dst.minRange = GAMEPAD_JOYSTICK_MIN;
                 dst.maxRange = GAMEPAD_JOYSTICK_MAX;
             } else {
@@ -243,6 +260,11 @@ void RotaryEncoderInput::setup()
         encoderState[i].pulseDir = 0;
         encoderState[i].pulseUntil = 0;
         encoderState[i].lastValidDelta = 0;
+        encoderState[i].velWindowSteps = 0;
+        encoderState[i].velWindowStart = now;
+        // Seed the cached velocity axis at the centre so a velocity-mode encoder
+        // reports "no motion" until the first window closes.
+        encoderState[i].velAxisValue = (uint16_t)((encoderMap[i].minRange + encoderMap[i].maxRange) / 2);
 
         newPinMask |= (1u << pinA);
         newPinMask |= (1u << pinB);
@@ -448,6 +470,7 @@ void RotaryEncoderInput::preprocess()
 
 void RotaryEncoderInput::process()
 {
+    const uint32_t now = getMillis();
     for (uint8_t i = 0; i < MAX_ENCODERS; i++) {
         EncoderPinMap& m = encoderMap[i];
         EncoderPinState& s = encoderState[i];
@@ -473,6 +496,12 @@ void RotaryEncoderInput::process()
                 break;
             case ENCODER_MODE_RIGHT_ANALOG_Y:
                 gamepad->state.ry = mapEncoderValueStick(i, s.accumulatedSteps);
+                break;
+            case ENCODER_MODE_RIGHT_ANALOG_X_VELOCITY:
+                gamepad->state.rx = mapEncoderValueVelocity(i, deltaSteps, now);
+                break;
+            case ENCODER_MODE_RIGHT_ANALOG_Y_VELOCITY:
+                gamepad->state.ry = mapEncoderValueVelocity(i, deltaSteps, now);
                 break;
             case ENCODER_MODE_LEFT_TRIGGER:
                 gamepad->state.lt = (uint8_t)mapEncoderValueTrigger(i, s.accumulatedSteps);
@@ -545,6 +574,34 @@ uint16_t RotaryEncoderInput::mapEncoderValueTrigger(int8_t index, int32_t steps)
     if (mapped < m.minRange) mapped = m.minRange;
     if (mapped > m.maxRange) mapped = m.maxRange;
     return (uint16_t)mapped;
+}
+
+// Velocity (rate) output. Accumulates signed steps over VEL_WINDOW_MS, then publishes
+// the windowed steps/second as a centred axis value scaled so that +/- velocityFullScale
+// steps/sec reaches full deflection. Between window boundaries it returns the cached
+// value, so a host sampling once per frame sees a stable rate instead of raw per-tick
+// jitter. A window with zero steps maps to centre, self-centring the axis at rest.
+uint16_t RotaryEncoderInput::mapEncoderValueVelocity(int8_t index, int32_t delta, uint32_t now) {
+    EncoderPinMap& m = encoderMap[index];
+    EncoderPinState& s = encoderState[index];
+
+    s.velWindowSteps += delta;
+
+    // Rollover-safe elapsed check (uint32 millis wraps every ~49.7 days).
+    const uint32_t elapsed = now - s.velWindowStart;
+    if (elapsed >= VEL_WINDOW_MS) {
+        const int32_t fs = m.velocityFullScale > 0 ? m.velocityFullScale : 1;
+        // steps/second over the window (signed; direction preserved).
+        const int32_t stepsPerSec =
+            (int32_t)(((int64_t)s.velWindowSteps * 1000) / (int64_t)(elapsed ? elapsed : 1));
+        int32_t mapped = map(stepsPerSec, -fs, fs, m.minRange, m.maxRange);
+        if (mapped < m.minRange) mapped = m.minRange;
+        if (mapped > m.maxRange) mapped = m.maxRange;
+        s.velAxisValue = (uint16_t)mapped;
+        s.velWindowSteps = 0;
+        s.velWindowStart = now;
+    }
+    return s.velAxisValue;
 }
 
 int32_t RotaryEncoderInput::map(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max) {

@@ -804,6 +804,7 @@ void ConfigUtils::initUnsetPropertiesWithDefaults(Config& config)
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderOne, countsPerDetent, ENCODER_ONE_COUNTS_PER_DETENT);
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderOne, encoderType, ENCODER_ONE_TYPE);
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderOne, pulseHoldMs, ENCODER_ONE_PULSE_HOLD_MS);
+    INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderOne, velocityFullScale, ENCODER_ONE_VELOCITY_FULL_SCALE);
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderTwo, enabled, !!ENCODER_TWO_ENABLED);
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderTwo, pinA, (Pin_t)ENCODER_TWO_PIN_A);
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderTwo, pinB, (Pin_t)ENCODER_TWO_PIN_B);
@@ -815,6 +816,7 @@ void ConfigUtils::initUnsetPropertiesWithDefaults(Config& config)
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderTwo, countsPerDetent, ENCODER_TWO_COUNTS_PER_DETENT);
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderTwo, encoderType, ENCODER_TWO_TYPE);
     INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderTwo, pulseHoldMs, ENCODER_TWO_PULSE_HOLD_MS);
+    INIT_UNSET_PROPERTY(config.addonOptions.rotaryOptions.encoderTwo, velocityFullScale, ENCODER_TWO_VELOCITY_FULL_SCALE);
 
     // addonOptions.reactiveLEDOptions
     INIT_UNSET_PROPERTY(config.addonOptions.reactiveLEDOptions, enabled, !!REACTIVE_LED_ENABLED);

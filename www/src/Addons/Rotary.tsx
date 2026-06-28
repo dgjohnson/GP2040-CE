@@ -18,6 +18,8 @@ const ENCODER_MODES = [
 	{ label: 'encoder-mode-dpad-x', value: 7 },
 	{ label: 'encoder-mode-dpad-y', value: 8 },
 	{ label: 'encoder-mode-volume', value: 9 },
+	{ label: 'encoder-mode-right-analog-x-velocity', value: 10 },
+	{ label: 'encoder-mode-right-analog-y-velocity', value: 11 },
 ];
 
 const ENCODER_TYPES = [
@@ -39,6 +41,10 @@ const ENCODER_MAX_MULTIPLE = 200;
 
 const ENCODER_MIN_PULSE_HOLD = 0;
 const ENCODER_MAX_PULSE_HOLD = 500;
+
+// Velocity-mode full scale: spin speed (steps/sec) that maps to full deflection.
+const ENCODER_MIN_VELOCITY_FULL_SCALE = 1;
+const ENCODER_MAX_VELOCITY_FULL_SCALE = 100000;
 
 // Validators only fire when (1) the rotary addon itself is enabled AND (2) the
 // specific sub-encoder is enabled. Gating per-encoder fields (pin, mode, PPR,
@@ -98,6 +104,9 @@ export const rotaryScheme = {
 	encoderOnePulseHoldMs: numberWhenSubEncoderEnabled('Encoder One Pulse Hold (ms)', 'encoderOneEnabled')
 		.min(ENCODER_MIN_PULSE_HOLD)
 		.max(ENCODER_MAX_PULSE_HOLD),
+	encoderOneVelocityFullScale: numberWhenSubEncoderEnabled('Encoder One Velocity Full Scale', 'encoderOneEnabled')
+		.min(ENCODER_MIN_VELOCITY_FULL_SCALE)
+		.max(ENCODER_MAX_VELOCITY_FULL_SCALE),
 	encoderTwoEnabled: numberWhenAddonEnabled('Encoder Two Enabled'),
 	encoderTwoPinA: pinWhenSubEncoderEnabled('Encoder Two Pin A', 'encoderTwoEnabled'),
 	encoderTwoPinB: pinWhenSubEncoderEnabled('Encoder Two Pin B', 'encoderTwoEnabled'),
@@ -115,6 +124,9 @@ export const rotaryScheme = {
 	encoderTwoPulseHoldMs: numberWhenSubEncoderEnabled('Encoder Two Pulse Hold (ms)', 'encoderTwoEnabled')
 		.min(ENCODER_MIN_PULSE_HOLD)
 		.max(ENCODER_MAX_PULSE_HOLD),
+	encoderTwoVelocityFullScale: numberWhenSubEncoderEnabled('Encoder Two Velocity Full Scale', 'encoderTwoEnabled')
+		.min(ENCODER_MIN_VELOCITY_FULL_SCALE)
+		.max(ENCODER_MAX_VELOCITY_FULL_SCALE),
 };
 
 export const rotaryState = {
@@ -129,6 +141,7 @@ export const rotaryState = {
 	encoderOneCountsPerDetent: 4,
 	encoderOneType: 0,
 	encoderOnePulseHoldMs: 30,
+	encoderOneVelocityFullScale: 200,
 	encoderTwoEnabled: 0,
 	encoderTwoPinA: -1,
 	encoderTwoPinB: -1,
@@ -140,6 +153,7 @@ export const rotaryState = {
 	encoderTwoCountsPerDetent: 4,
 	encoderTwoType: 0,
 	encoderTwoPulseHoldMs: 30,
+	encoderTwoVelocityFullScale: 200,
 	RotaryAddonEnabled: 0,
 };
 
@@ -298,6 +312,22 @@ const Rotary = ({ values, errors, handleChange, handleCheckbox }: AddonPropTypes
 									</option>
 								))}
 							</FormSelect>
+							<FormControl
+								type="number"
+								label={t('Rotary:encoder-velocity-full-scale-label')}
+								name="encoderOneVelocityFullScale"
+								className="form-control-sm"
+								groupClassName="mb-1"
+								value={values.encoderOneVelocityFullScale}
+								error={errors.encoderOneVelocityFullScale}
+								isInvalid={Boolean(errors.encoderOneVelocityFullScale)}
+								onChange={handleChange}
+								min={ENCODER_MIN_VELOCITY_FULL_SCALE}
+								max={ENCODER_MAX_VELOCITY_FULL_SCALE}
+							/>
+							<Form.Text className="text-muted d-block mb-3">
+								{t('Rotary:encoder-velocity-full-scale-help')}
+							</Form.Text>
 							<FormCheck
 								label={t('Rotary:encoder-allow-wrap-around-label')}
 								type="switch"
@@ -448,6 +478,22 @@ const Rotary = ({ values, errors, handleChange, handleCheckbox }: AddonPropTypes
 									</option>
 								))}
 							</FormSelect>
+							<FormControl
+								type="number"
+								label={t('Rotary:encoder-velocity-full-scale-label')}
+								name="encoderTwoVelocityFullScale"
+								className="form-control-sm"
+								groupClassName="mb-1"
+								value={values.encoderTwoVelocityFullScale}
+								error={errors.encoderTwoVelocityFullScale}
+								isInvalid={Boolean(errors.encoderTwoVelocityFullScale)}
+								onChange={handleChange}
+								min={ENCODER_MIN_VELOCITY_FULL_SCALE}
+								max={ENCODER_MAX_VELOCITY_FULL_SCALE}
+							/>
+							<Form.Text className="text-muted d-block mb-3">
+								{t('Rotary:encoder-velocity-full-scale-help')}
+							</Form.Text>
 							<FormCheck
 								label={t('Rotary:encoder-allow-wrap-around-label')}
 								type="switch"

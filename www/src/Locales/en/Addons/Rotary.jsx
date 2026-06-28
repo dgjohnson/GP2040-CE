@@ -13,6 +13,9 @@ export default {
 	'encoder-type-label': 'Encoder Type',
 	'encoder-counts-per-detent-label': 'Counts per Step',
 	'encoder-pulse-hold-ms-label': 'Pulse Hold (ms)',
+	'encoder-velocity-full-scale-label': 'Velocity Full Scale (steps/sec)',
+	'encoder-velocity-full-scale-help':
+		'Velocity modes only — spin speed (steps/second) that reaches full deflection. Lower = more sensitive. Pair with the emulator dial sensitivity (e.g. MAME).',
 	'encoder-mode-none': 'None',
 	'encoder-mode-left-analog-x': 'Left Analog X',
 	'encoder-mode-left-analog-y': 'Left Analog Y',
@@ -23,6 +26,8 @@ export default {
 	'encoder-mode-dpad-x': 'D-Pad Left/Right',
 	'encoder-mode-dpad-y': 'D-Pad Up/Down',
 	'encoder-mode-volume': 'Volume (Keyboard Only)',
+	'encoder-mode-right-analog-x-velocity': 'Right Analog X — Velocity (spinner/dial)',
+	'encoder-mode-right-analog-y-velocity': 'Right Analog Y — Velocity (spinner/dial)',
 	'encoder-type-mechanical-detented': 'Mechanical (detented)',
 	'encoder-type-optical-continuous': 'Optical / Continuous',
 	'counts-per-detent-1': '1 (every edge - high resolution)',

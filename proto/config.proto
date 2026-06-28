@@ -845,6 +845,10 @@ message RotaryPinOptions
     // Milliseconds to hold a DPAD direction after each step. Also used as the minimum
     // separation between repeated VOLUME events. 0 disables hold (single-frame pulse).
     optional uint32 pulseHoldMs = 11;
+    // Velocity-mode full scale: the spin speed in logical steps/second that maps to
+    // full axis deflection for the *_VELOCITY modes. Lower = more sensitive. Unused
+    // by the position/trigger/dpad/volume modes.
+    optional uint32 velocityFullScale = 12;
 }
 
 message RotaryOptions

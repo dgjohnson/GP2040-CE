@@ -54,6 +54,10 @@
 #define ENCODER_ONE_PULSE_HOLD_MS 30
 #endif
 
+#ifndef ENCODER_ONE_VELOCITY_FULL_SCALE
+#define ENCODER_ONE_VELOCITY_FULL_SCALE 200
+#endif
+
 #ifndef ENCODER_TWO_ENABLED
 #define ENCODER_TWO_ENABLED 0
 #endif
@@ -96,6 +100,10 @@
 
 #ifndef ENCODER_TWO_PULSE_HOLD_MS
 #define ENCODER_TWO_PULSE_HOLD_MS 30
+#endif
+
+#ifndef ENCODER_TWO_VELOCITY_FULL_SCALE
+#define ENCODER_TWO_VELOCITY_FULL_SCALE 200
 #endif
 
 #define MAX_ENCODERS 2
@@ -141,6 +149,9 @@ public:
         uint8_t countsPerDetent = 4;
         // Hold time for DPAD pulses / minimum spacing for VOLUME events, in ms.
         uint32_t pulseHoldMs = 30;
+        // Velocity-mode full scale: spin speed (logical steps/second) that maps to
+        // full deflection for the *_VELOCITY modes. Unused by other modes.
+        int32_t velocityFullScale = 200;
         // Pre-computed: number of logical steps that span the full output range.
         // For centered modes (analog stick), [-stepsPerFullScale/2, +stepsPerFullScale/2]
         // covers [minRange, maxRange]. For trigger / wrap modes, [0, stepsPerFullScale]
@@ -166,6 +177,14 @@ public:
         // DPAD mode pulse latching.
         int8_t pulseDir = 0;            // -1, 0, or +1
         uint32_t pulseUntil = 0;        // millis at which the current pulse expires
+
+        // Velocity-mode (rate) output state. We accumulate signed steps over a short
+        // window and publish a smoothed steps/second value as a centered axis, so a
+        // host that samples the axis once per frame (e.g. MAME) sees stable rate
+        // rather than the noisy raw per-loop-tick delta.
+        int32_t velWindowSteps = 0;     // steps accumulated in the current window
+        uint32_t velWindowStart = 0;    // millis at window start
+        uint16_t velAxisValue = 0;      // cached centered axis value, published each tick
 
         // Last valid quadrature delta (-1 or +1) seen by handleEdge(). Recorded
         // for diagnostics / future direction-aware recovery; the previous use as
@@ -204,6 +223,9 @@ private:
 
     uint16_t mapEncoderValueStick(int8_t index, int32_t steps);
     uint16_t mapEncoderValueTrigger(int8_t index, int32_t steps);
+    // Velocity (rate) output: smooths the per-tick step delta into a centered axis
+    // value over a short window. Used by the *_VELOCITY modes.
+    uint16_t mapEncoderValueVelocity(int8_t index, int32_t delta, uint32_t now);
 
     // Cached gamepad pointer; the Storage-owned Gamepad* doesn't change after
     // boot, so we look it up once in setup() and avoid the per-tick indirection.
